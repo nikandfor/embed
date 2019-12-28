@@ -1,0 +1,12 @@
+language: go
+
+os:
+  - linux
+  - osx
+
+script:
+  - go generate
+  - go test -v -race -coverprofile=coverage.txt -covermode=atomic ./tests
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)

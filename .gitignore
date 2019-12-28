@@ -1,0 +1,4 @@
+tests/dir.go
+tests/dir2.go
+tests/empty.go
+tests/file.go
