@@ -25,11 +25,11 @@ import (
 type file struct {
 	Path    string
 	Size    int64
-	Mode    os.FileMode
 	ModTime time.Time
-	IsDir   bool
 	Files   []string
 	Content string
+	Mode    os.FileMode
+	IsDir   bool
 }
 
 func main() {
@@ -95,9 +95,8 @@ func embed(c *cli.Command) error {
 			if n != "." && n[0] == '.' {
 				if info.IsDir() {
 					return filepath.SkipDir
-				} else {
-					return nil
 				}
+				return nil
 			}
 		}
 

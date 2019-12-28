@@ -33,7 +33,7 @@ func TestDirOpen(t *testing.T) {
 
 	assert.Equal(t, "go.mod", s.Name())
 	assert.Equal(t, int64(216), s.Size())
-	assert.Equal(t, os.FileMode(0664), s.Mode())
+	assert.True(t, s.Mode()&0644 == 0644)
 	assert.True(t, time.Now().After(s.ModTime()))
 	assert.Equal(t, false, s.IsDir())
 	assert.Nil(t, s.Sys())
@@ -86,14 +86,16 @@ func TestDirReaddir(t *testing.T) {
 	assert.True(t, s.IsDir())
 	assert.Equal(t, ".", s.Name())
 
-	ff, err := f.Readdir(2)
+	ff, err := f.Readdir(4)
 	assert.NoError(t, err)
-	if !assert.Len(t, ff, 2) {
+	if !assert.Len(t, ff, 4) {
 		return
 	}
 
-	assert.Equal(t, "empty", ff[0].Name())
-	assert.Equal(t, "go.mod", ff[1].Name())
+	var list []string
+	for _, f := range ff {
+		list = append(list, f.Name())
+	}
 
 	ff, err = f.Readdir(2)
 	assert.NoError(t, err)
@@ -101,8 +103,9 @@ func TestDirReaddir(t *testing.T) {
 		return
 	}
 
-	assert.Equal(t, "go.sum", ff[0].Name())
-	assert.Equal(t, "main.go", ff[1].Name())
+	for _, f := range ff {
+		list = append(list, f.Name())
+	}
 
 	ff, err = f.Readdir(2)
 	assert.Equal(t, io.EOF, err)
@@ -110,7 +113,11 @@ func TestDirReaddir(t *testing.T) {
 		return
 	}
 
-	assert.Equal(t, "tests", ff[0].Name())
+	for _, f := range ff {
+		list = append(list, f.Name())
+	}
+
+	assert.ElementsMatch(t, list, []string{"LICENSE", "README.md", "empty", "go.mod", "go.sum", "main.go", "tests"})
 
 	//
 	f2, err := fs.Open("/")
