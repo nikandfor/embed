@@ -185,9 +185,10 @@ type (
 	file struct {
 		path    string
 		size    int64
-		mode    os.FileMode
 		modTime time.Time
+		mode    os.FileMode
 		isDir   bool
+
 		files   []string
 		content string
 
