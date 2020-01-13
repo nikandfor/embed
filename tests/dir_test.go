@@ -32,7 +32,7 @@ func TestDirOpen(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, "go.mod", s.Name())
-	assert.Equal(t, int64(216), s.Size())
+	assert.Equal(t, int64(324), s.Size())
 	assert.True(t, s.Mode()&0644 == 0644)
 	assert.True(t, time.Now().After(s.ModTime()))
 	assert.Equal(t, false, s.IsDir())
@@ -41,21 +41,24 @@ func TestDirOpen(t *testing.T) {
 	data, err := ioutil.ReadAll(f)
 	assert.NoError(t, err)
 
-	assert.Equal(t, `module github.com/nikandfor/embed
+	fcont := `module github.com/nikandfor/embed
 
 go 1.13
 
 require (
 	github.com/golang/snappy v0.0.1
 	github.com/nikandfor/cli v0.0.0-20191209221237-ad6c97f5afac
+	github.com/nikandfor/json v0.0.0-20191226181838-acc5fc24730f // indirect
+	github.com/nikandfor/tlog v0.3.0
 	github.com/pkg/errors v0.8.1
 	github.com/stretchr/testify v1.3.0
 )
-`, string(data))
+`
+	assert.Equal(t, fcont, string(data))
 
-	off, err := f.Seek(-216, io.SeekCurrent)
+	off, err := f.Seek(0, io.SeekCurrent)
 	assert.NoError(t, err)
-	assert.Equal(t, int64(0), off)
+	assert.Equal(t, int64(len(fcont)), off)
 
 	n, err := f.(io.ReaderAt).ReadAt(data[:40], 10)
 	assert.NoError(t, err)

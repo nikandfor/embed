@@ -19,6 +19,7 @@ import (
 
 	"github.com/golang/snappy"
 	"github.com/nikandfor/cli"
+	"github.com/nikandfor/tlog"
 	"github.com/pkg/errors"
 )
 
@@ -35,6 +36,7 @@ type file struct {
 func main() {
 	cli.App = cli.Command{
 		Name:   "embed",
+		Usage:  "[OPTIONS] {<exclude_path>}",
 		Action: embed,
 		Flags: []*cli.Flag{
 			cli.NewFlag("src,s", "static", "folder of file to embed"),
@@ -42,8 +44,8 @@ func main() {
 			cli.NewFlag("package,pkg,p", "static", "package name"),
 			cli.NewFlag("name,n", "", "prefix all functions with given name"),
 			cli.NewFlag("skip-hidden,h", false, "skip hidden files in src"),
-			cli.NewFlag("trim-prefix,prefix", "", "trim prefix in each path"),
 			cli.NewFlag("force-structs", false, "add struct definitions even with given name"),
+			cli.HelpFlag,
 		},
 	}
 
@@ -64,16 +66,18 @@ func embed(c *cli.Command) error {
 
 	err = filepath.Walk(c.String("src"), func(p string, info os.FileInfo, err error) error {
 		if p == path.Clean(c.String("dst")) {
+			tlog.Printf("skip dst: %v", p)
 			return nil
 		}
 		for _, a := range c.Args {
 			if p == filepath.Clean(a) {
+				tlog.Printf("skip arg: %v", p)
 				return nil
 			}
 		}
 
 		realPath := p
-		if pp := c.String("trim-prefix"); pp != "" {
+		if pp := c.String("src"); pp != "" && pp != "." {
 			if strings.HasPrefix(p, pp) {
 				p = p[len(pp):]
 			} else {
@@ -93,11 +97,18 @@ func embed(c *cli.Command) error {
 		if c.Bool("skip-hidden") {
 			n := path.Base(p)
 			if n != "." && n[0] == '.' {
+				tlog.Printf("skip hidden: %v", realPath)
 				if info.IsDir() {
 					return filepath.SkipDir
 				}
 				return nil
 			}
+		}
+
+		if realPath != p {
+			tlog.Printf("path %q isdir %v (%q)", p, info.IsDir(), realPath)
+		} else {
+			tlog.Printf("path %q isdir %v", p, info.IsDir())
 		}
 
 		f := &file{
@@ -133,6 +144,7 @@ func embed(c *cli.Command) error {
 			if l := len(d) - 1; d[l] == '/' {
 				d = d[:l]
 			}
+			tlog.V("dirs").Printf("dir  %q file %q  dirs: %v", d, fn, dirs)
 			dirs[d].Files = append(dirs[d].Files, fn)
 		}
 
@@ -312,7 +324,7 @@ func (f *file) ModTime() time.Time { return f.modTime }
 func (f *file) IsDir() bool        { return f.isDir }
 func (f *file) Sys() interface{}   { return nil }
 
-func must(t time.Time, err error) time.Time {
+func mustTime(t time.Time, err error) time.Time {
 	if err != nil {
 		panic(err)
 	}
@@ -326,7 +338,7 @@ var m{{ .name }} = map[string]*file{
 		path:    ` + "`{{ .Path }}`" + `,
 		size:    {{ .Size }},
 		mode:    {{ .Mode | sprintf "0%o" }},
-		modTime: must(time.Parse(timeFormat, "{{ .ModTime }}")),
+		modTime: mustTime(time.Parse(timeFormat, "{{ .ModTime }}")),
 		{{- if .IsDir }}
 		isDir:   {{ .IsDir }},
 		files:   []string{
