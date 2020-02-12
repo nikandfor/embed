@@ -43,7 +43,7 @@ func main() {
 			cli.NewFlag("dst,d", "static/embedded.go", "output file"),
 			cli.NewFlag("package,pkg,p", "static", "package name"),
 			cli.NewFlag("name,n", "", "prefix all functions with given name"),
-			cli.NewFlag("skip-hidden,h", false, "skip hidden files in src"),
+			cli.NewFlag("skip-hidden,H", false, "skip hidden files in src"),
 			cli.NewFlag("force-structs", false, "add struct definitions even with given name"),
 			cli.HelpFlag,
 		},
@@ -65,19 +65,22 @@ func embed(c *cli.Command) error {
 	dirs := map[string]*file{}
 
 	err = filepath.Walk(c.String("src"), func(p string, info os.FileInfo, err error) error {
+		p = path.Clean(p)
+
 		if p == path.Clean(c.String("dst")) {
-			tlog.Printf("skip dst: %v", p)
+			tlog.Printf("SKIP dst:    %v", p)
 			return nil
 		}
 		for _, a := range c.Args {
 			if p == filepath.Clean(a) {
-				tlog.Printf("skip arg: %v", p)
+				tlog.Printf("SKIP arg:    %v", p)
 				return nil
 			}
 		}
 
 		realPath := p
 		if pp := c.String("src"); pp != "" && pp != "." {
+			pp = path.Clean(pp)
 			if strings.HasPrefix(p, pp) {
 				p = p[len(pp):]
 			} else {
@@ -97,7 +100,7 @@ func embed(c *cli.Command) error {
 		if c.Bool("skip-hidden") {
 			n := path.Base(p)
 			if n != "." && n[0] == '.' {
-				tlog.Printf("skip hidden: %v", realPath)
+				tlog.Printf("SKIP hidden: %v", realPath)
 				if info.IsDir() {
 					return filepath.SkipDir
 				}
@@ -105,11 +108,11 @@ func embed(c *cli.Command) error {
 			}
 		}
 
-		if realPath != p {
-			tlog.Printf("path %q isdir %v (%q)", p, info.IsDir(), realPath)
-		} else {
-			tlog.Printf("path %q isdir %v", p, info.IsDir())
+		typ := "file"
+		if info.IsDir() {
+			typ = "dir"
 		}
+		tlog.Printf("add   %-5v  %6v kb %v", typ, info.Size()/1024, p)
 
 		f := &file{
 			Path:    p,
