@@ -1,8 +1,10 @@
+// +build ignore
+
 package main
 
-//go:generate go run main.go --pkg tests --skip-hidden --src . --dst tests/dir.go tests/dir.go tests/dir2.go
-//go:generate go run main.go --pkg tests --skip-hidden --src . --dst tests/dir2.go --name Second tests/dir.go tests/dir2.go
-//go:generate go run main.go --pkg tests --skip-hidden --src go.mod --dst tests/file.go
+//go:generate go run main.go --pkg tests --skip-hidden --src . --dst tests/dir.go tests/dir.go tests/dir2.go --name fs
+//go:generate go run main.go --pkg tests --skip-hidden --src . --dst tests/dir2.go --name Second tests/dir.go tests/dir2.go --name fs2
+//go:generate go run main.go --pkg tests --skip-hidden --src go.mod --dst tests/file.go --name file
 //go:generate go run main.go --pkg tests --skip-hidden --src empty --dst tests/empty.go --name Empty
 
 import (
