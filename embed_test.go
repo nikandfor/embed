@@ -26,14 +26,21 @@ func EncodeFile(d []byte) (cont string) {
 func TestFile(t *testing.T) {
 	var f File
 
-	SetFile(&f, EncodeFile(nil))
+	SetFile(&f, false, EncodeFile(nil))
 	assert.Len(t, f.Data(), 0)
 
 	b := make([]byte, 100)
 	n, err := f.Reader().Read(b)
 	assert.Error(t, err)
 
-	SetFile(&f, EncodeFile([]byte("content")))
+	SetFile(&f, false, EncodeFile([]byte("content")))
+	assert.Equal(t, []byte("content"), f.Data())
+
+	n, err = f.Reader().Read(b)
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("content"), b[:n])
+
+	SetFile(&f, true, "content")
 	assert.Equal(t, []byte("content"), f.Data())
 
 	n, err = f.Reader().Read(b)
@@ -44,11 +51,11 @@ func TestFile(t *testing.T) {
 func TestBadFile(t *testing.T) {
 	var f File
 
-	SetFile(&f, EncodeFile([]byte("content"))+"123")
+	SetFile(&f, false, EncodeFile([]byte("content"))+"123")
 
 	assert.Panics(t, func() { f.Data() })
 
-	SetFile(&f, base64.StdEncoding.EncodeToString([]byte("content")))
+	SetFile(&f, false, base64.StdEncoding.EncodeToString([]byte("content")))
 
 	assert.Panics(t, func() { f.Data() })
 }
@@ -63,6 +70,80 @@ func TestFSFile(t *testing.T) {
 
 	AddFile(&fs, "file_path", 7, tm, 0600, false, nil, EncodeFile([]byte("content")))
 	AddFile(&fs, "file", 6, tm2, 0641, false, nil, EncodeFile([]byte("valval")))
+
+	//
+	f, err := fs.Open("/file_path")
+	assert.NoError(t, err)
+
+	b := make([]byte, 100)
+	n, err := f.Read(b)
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("content"), b[:n])
+
+	s, err := f.Stat()
+	assert.NoError(t, err)
+	assert.Equal(t, "file_path", s.Name())
+	assert.Equal(t, int64(7), s.Size())
+	assert.Equal(t, tm, s.ModTime())
+	assert.Equal(t, os.FileMode(0600), s.Mode())
+	assert.Equal(t, false, s.IsDir())
+	assert.Equal(t, nil, s.Sys())
+
+	//
+	fs.NoCache = true
+
+	f, err = fs.Open("/file")
+	assert.NoError(t, err)
+
+	p, err := f.Seek(1, io.SeekStart)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), p)
+
+	n, err = f.Read(b[:3])
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("alv"), b[:n])
+
+	n, err = f.(io.ReaderAt).ReadAt(b[:3], 2)
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("lva"), b[:n])
+
+	s, err = f.Stat()
+	assert.NoError(t, err)
+	assert.Equal(t, "file", s.Name())
+	assert.Equal(t, int64(6), s.Size())
+	assert.Equal(t, tm2, s.ModTime())
+	assert.Equal(t, os.FileMode(0641), s.Mode())
+	assert.Equal(t, false, s.IsDir())
+
+	//
+	err = f.Close()
+	assert.NoError(t, err)
+
+	_, err = f.Seek(1, io.SeekStart)
+	assert.Equal(t, err, ErrClosed)
+
+	_, err = f.Read(b)
+	assert.Equal(t, err, ErrClosed)
+
+	_, err = f.(io.ReaderAt).ReadAt(b, 2)
+	assert.Equal(t, err, ErrClosed)
+
+	//
+	f, err = fs.Open("nonexisted")
+	assert.True(t, os.IsNotExist(err))
+}
+
+func TestFSFileNoc(t *testing.T) {
+	tm := time.Now()
+	tm2 := time.Now()
+
+	var fs FS
+	NotCompressed(&fs, true)
+
+	var _ http.FileSystem = fs
+
+	AddFile(&fs, "file_path", 7, tm, 0600, false, nil, "content")
+	AddFile(&fs, "file", 6, tm2, 0641, false, nil, "valval")
 
 	//
 	f, err := fs.Open("/file_path")

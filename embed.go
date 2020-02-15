@@ -15,14 +15,16 @@ import (
 )
 
 //go:generate go run ./cmd/embed --pkg tests --skip-hidden --src . --dst tests/dir.go tests/dir.go tests/dir2.go --var FS
-//go:generate go run ./cmd/embed --pkg tests --skip-hidden --src . --dst tests/dir2.go --var fs tests/dir.go tests/dir2.go
+//go:generate go run ./cmd/embed --pkg tests --skip-hidden --src . --dst tests/dir2.go --var fs --noc tests/dir.go tests/dir2.go
 //go:generate go run ./cmd/embed --pkg tests --skip-hidden --src go.mod --dst tests/file.go --var file
+//go:generate go run ./cmd/embed --pkg tests --skip-hidden --src go.mod --dst tests/noc.go --var noc --noc
 //go:generate go run ./cmd/embed --pkg tests --skip-hidden --src empty --dst tests/empty.go --var Empty
 
 type (
 	// File embeds file content in executable.
 	File struct {
 		enc string
+		noc bool
 	}
 
 	file struct {
@@ -41,9 +43,10 @@ type (
 
 	// FS embeds files content in executable.
 	FS struct {
-		m       map[string]*file
-		Index   bool // Allow index over directories
-		NoCache bool // Do not cache decoded files in memory
+		m          map[string]*file
+		nocompress bool
+		Index      bool // Allow index over directories
+		NoCache    bool // Do not cache decoded files in memory
 	}
 
 	fsfile struct {
@@ -63,8 +66,9 @@ var (
 )
 
 // SetFile used by generator.
-func SetFile(f *File, enc string) {
+func SetFile(f *File, noc bool, enc string) {
 	f.enc = enc
+	f.noc = noc
 }
 
 // AddFile used by generator.
@@ -83,8 +87,14 @@ func AddFile(fs *FS, path string, size int64, mod time.Time, mode os.FileMode, i
 	}
 }
 
+// NotCompressed used by generator.
+func NotCompressed(fs *FS, b bool) { fs.nocompress = b }
+
 // Data decodes and returns file content or nil if empty.
 func (f File) Data() []byte {
+	if f.noc {
+		return []byte(f.enc)
+	}
 	if f.enc == "" {
 		return nil
 	}
@@ -148,6 +158,9 @@ func (fs FS) decode(f *file) (d []byte, err error) {
 }
 
 func (fs FS) decodeFile(f *file) (d []byte, err error) {
+	if fs.nocompress {
+		return []byte(f.content), nil
+	}
 	if f.content == "" {
 		return
 	}
