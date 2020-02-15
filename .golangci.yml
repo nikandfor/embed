@@ -18,10 +18,11 @@ linters-settings:
     list-type: whitelist
     packages:
       - github.com/stretchr/testify/assert
-      - github.com/nikandfor/json
+      - github.com/stretchr/testify/require
       - github.com/nikandfor/cli
       - github.com/nikandfor/tlog
-      - github.com/pkg/errors
+      - github.com/nikandfor/errors
+      - github.com/nikandfor/embed
       - github.com/golang/snappy
   misspell:
     locale: US
@@ -41,6 +42,7 @@ linters-settings:
       - unnamedResult
       - builtinShadow
       - commentedOutCode
+      - appendAssign
 
 linters:
   enable-all: true
@@ -49,3 +51,4 @@ linters:
     - nakedret
     - gochecknoinits
     - gochecknoglobals
+    - prealloc

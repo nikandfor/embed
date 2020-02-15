@@ -16,9 +16,10 @@ import (
 
 	"github.com/golang/snappy"
 	"github.com/nikandfor/cli"
-	"github.com/nikandfor/embed"
+	"github.com/nikandfor/errors"
 	"github.com/nikandfor/tlog"
-	"github.com/pkg/errors"
+
+	"github.com/nikandfor/embed"
 )
 
 type file struct {
@@ -132,13 +133,11 @@ func embedFS(c *cli.Command) error {
 
 			if c.Bool("noc") {
 				f.Content = strconv.Quote(string(data))
-			} else {
-				if len(data) != 0 {
-					z := snappy.Encode(nil, data)
-					a := base64.StdEncoding.EncodeToString(z)
+			} else if len(data) != 0 {
+				z := snappy.Encode(nil, data)
+				a := base64.StdEncoding.EncodeToString(z)
 
-					f.Content = a
-				}
+				f.Content = a
 			}
 		}
 

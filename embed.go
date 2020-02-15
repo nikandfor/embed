@@ -73,12 +73,12 @@ func SetFile(f *File, noc bool, enc []byte) {
 }
 
 // AddFile used by generator.
-func AddFile(fs *FS, path string, size int64, mod time.Time, mode os.FileMode, isDir bool, files []string, enc []byte) {
+func AddFile(fs *FS, fpath string, size int64, mod time.Time, mode os.FileMode, isDir bool, files []string, enc []byte) {
 	if fs.m == nil {
 		fs.m = make(map[string]*file)
 	}
-	fs.m[path] = &file{
-		path:    path,
+	fs.m[fpath] = &file{
+		path:    fpath,
 		size:    size,
 		modTime: mod,
 		mode:    mode,
@@ -130,7 +130,7 @@ func (f File) Reader() io.Reader {
 // It means less allocs but also it means you can't modify resulting slice content.
 // You may slice it like data[10:100].
 func (fs FS) Open(p string) (_ http.File, err error) {
-	if len(p) != 0 && p[0] == '/' {
+	if p != "" && p[0] == '/' {
 		p = p[1:]
 	}
 	if p == "" {
@@ -156,7 +156,7 @@ func (fs FS) Open(p string) (_ http.File, err error) {
 }
 
 func (fs FS) Data(p string) ([]byte, error) {
-	if len(p) != 0 && p[0] == '/' {
+	if p != "" && p[0] == '/' {
 		p = p[1:]
 	}
 	if p == "" {
@@ -175,6 +175,9 @@ func (fs FS) Data(p string) ([]byte, error) {
 }
 
 func (fs FS) decode(f *file) (d []byte, err error) {
+	if fs.nocompress {
+		return f.content, nil
+	}
 	if fs.NoCache {
 		return fs.decodeFile(f)
 	}
@@ -190,9 +193,6 @@ func (fs FS) decode(f *file) (d []byte, err error) {
 }
 
 func (fs FS) decodeFile(f *file) (d []byte, err error) {
-	if fs.nocompress {
-		return f.content, nil
-	}
 	if f.content == nil {
 		return
 	}

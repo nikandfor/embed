@@ -30,13 +30,13 @@ func TestFile(t *testing.T) {
 	assert.Len(t, f.Data(), 0)
 
 	b := make([]byte, 100)
-	n, err := f.Reader().Read(b)
+	_, err := f.Reader().Read(b)
 	assert.Error(t, err)
 
 	SetFile(&f, false, EncodeFile([]byte("content")))
 	assert.Equal(t, []byte("content"), f.Data())
 
-	n, err = f.Reader().Read(b)
+	n, err := f.Reader().Read(b)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("content"), b[:n])
 
@@ -68,9 +68,9 @@ func TestFSFile(t *testing.T) {
 
 	var _ http.FileSystem = fs
 
-	AddFile(&fs, "file_path", 7, tm, 0600, false, nil, EncodeFile([]byte("content")))
-	AddFile(&fs, "file", 6, tm2, 0641, false, nil, EncodeFile([]byte("valval")))
-	AddFile(&fs, "empty", 6, tm2, 0641, false, nil, nil)
+	AddFile(&fs, "file_path", 7, tm, os.FileMode(0600), false, nil, EncodeFile([]byte("content")))
+	AddFile(&fs, "file", 6, tm2, os.FileMode(0641), false, nil, EncodeFile([]byte("valval")))
+	AddFile(&fs, "empty", 6, tm2, os.FileMode(0641), false, nil, nil)
 
 	//
 	f, err := fs.Open("/file_path")
@@ -134,7 +134,7 @@ func TestFSFile(t *testing.T) {
 	assert.Equal(t, ErrClosed, err)
 
 	//
-	f, err = fs.Open("nonexisted")
+	_, err = fs.Open("nonexisted")
 	assert.True(t, os.IsNotExist(err))
 }
 
@@ -147,8 +147,8 @@ func TestFSFileNoc(t *testing.T) {
 
 	var _ http.FileSystem = fs
 
-	AddFile(&fs, "file_path", 7, tm, 0600, false, nil, []byte("content"))
-	AddFile(&fs, "file", 6, tm2, 0641, false, nil, []byte("valval"))
+	AddFile(&fs, "file_path", 7, tm, os.FileMode(0600), false, nil, []byte("content"))
+	AddFile(&fs, "file", 6, tm2, os.FileMode(0641), false, nil, []byte("valval"))
 
 	//
 	f, err := fs.Open("/file_path")
@@ -208,7 +208,7 @@ func TestFSFileNoc(t *testing.T) {
 	assert.Equal(t, err, ErrClosed)
 
 	//
-	f, err = fs.Open("nonexisted")
+	_, err = fs.Open("nonexisted")
 	assert.True(t, os.IsNotExist(err))
 }
 
@@ -220,9 +220,9 @@ func TestFSDir(t *testing.T) {
 	var fs FS
 	fs.Index = true
 
-	AddFile(&fs, "dir", 4096, tm, 020000000775, true, []string{"a", "b"}, nil)
-	AddFile(&fs, "dir/a", 7, tm2, 0600, false, nil, EncodeFile([]byte("content")))
-	AddFile(&fs, "dir/b", 6, tm3, 0641, false, nil, EncodeFile([]byte("valval")))
+	AddFile(&fs, "dir", 4096, tm, os.FileMode(020000000775), true, []string{"a", "b"}, nil)
+	AddFile(&fs, "dir/a", 7, tm2, os.FileMode(0600), false, nil, EncodeFile([]byte("content")))
+	AddFile(&fs, "dir/b", 6, tm3, os.FileMode(0641), false, nil, EncodeFile([]byte("valval")))
 
 	d, err := fs.Open("/dir")
 	assert.NoError(t, err)
@@ -267,8 +267,8 @@ func TestFSBadFile(t *testing.T) {
 
 	var fs FS
 
-	AddFile(&fs, "file1", 7, tm, 0600, false, nil, append(EncodeFile([]byte("content")), "123"...))
-	AddFile(&fs, "file2", 7, tm, 0600, false, nil, []byte(base64.StdEncoding.EncodeToString([]byte("content"))))
+	AddFile(&fs, "file1", 7, tm, os.FileMode(0600), false, nil, append(EncodeFile([]byte("content")), "123"...))
+	AddFile(&fs, "file2", 7, tm, os.FileMode(0600), false, nil, []byte(base64.StdEncoding.EncodeToString([]byte("content"))))
 
 	_, err := fs.Open("/file1")
 	assert.Error(t, err)
@@ -287,14 +287,14 @@ func TestFSData(t *testing.T) {
 	_, err := fs.Data("/")
 	assert.Equal(t, ErrNoContent, err)
 
-	AddFile(&fs, "file1", 7, tm, 0600, false, nil, EncodeFile([]byte("content")))
+	AddFile(&fs, "file1", 7, tm, os.FileMode(0600), false, nil, EncodeFile([]byte("content")))
 
 	data, err := fs.Data("/file1")
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("content"), data)
 
 	NotCompressed(&fs, true)
-	AddFile(&fs, "file2", 7, tm, 0600, false, nil, []byte("content2"))
+	AddFile(&fs, "file2", 7, tm, os.FileMode(0600), false, nil, []byte("content2"))
 
 	data, err = fs.Data("/file2")
 	assert.NoError(t, err)
