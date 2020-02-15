@@ -70,6 +70,7 @@ func TestFSFile(t *testing.T) {
 
 	AddFile(&fs, "file_path", 7, tm, 0600, false, nil, EncodeFile([]byte("content")))
 	AddFile(&fs, "file", 6, tm2, 0641, false, nil, EncodeFile([]byte("valval")))
+	AddFile(&fs, "empty", 6, tm2, 0641, false, nil, nil)
 
 	//
 	f, err := fs.Open("/file_path")
@@ -116,17 +117,21 @@ func TestFSFile(t *testing.T) {
 	assert.Equal(t, false, s.IsDir())
 
 	//
+	f, err = fs.Open("/empty")
+	assert.NoError(t, err)
+
+	//
 	err = f.Close()
 	assert.NoError(t, err)
 
 	_, err = f.Seek(1, io.SeekStart)
-	assert.Equal(t, err, ErrClosed)
+	assert.Equal(t, ErrClosed, err)
 
 	_, err = f.Read(b)
-	assert.Equal(t, err, ErrClosed)
+	assert.Equal(t, ErrClosed, err)
 
 	_, err = f.(io.ReaderAt).ReadAt(b, 2)
-	assert.Equal(t, err, ErrClosed)
+	assert.Equal(t, ErrClosed, err)
 
 	//
 	f, err = fs.Open("nonexisted")
@@ -272,9 +277,155 @@ func TestFSBadFile(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestFSData(t *testing.T) {
+	tm := time.Now()
+
+	var fs FS
+
+	AddFile(&fs, ".", 0, tm, 0, true, []string{"file1", "file2"}, nil)
+
+	_, err := fs.Data("/")
+	assert.Equal(t, ErrNoContent, err)
+
+	AddFile(&fs, "file1", 7, tm, 0600, false, nil, EncodeFile([]byte("content")))
+
+	data, err := fs.Data("/file1")
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("content"), data)
+
+	NotCompressed(&fs, true)
+	AddFile(&fs, "file2", 7, tm, 0600, false, nil, []byte("content2"))
+
+	data, err = fs.Data("/file2")
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("content2"), data)
+
+	_, err = fs.Data("/nofile")
+	assert.True(t, os.IsNotExist(err))
+}
+
 func TestCoverMustTime(t *testing.T) {
 	tm := MustTime(time.Parse(TimeFormat, TimeFormat))
 	assert.Equal(t, TimeFormat, tm.Format(TimeFormat))
 
 	assert.Panics(t, func() { MustTime(tm, io.EOF) })
+}
+
+func BenchmarkFile(b *testing.B) {
+	b.ReportAllocs()
+
+	var f File
+	SetFile(&f, false, EncodeFile([]byte("file content")))
+
+	var d []byte
+
+	for i := 0; i < b.N; i++ {
+		d = f.Data()
+	}
+
+	_ = d
+}
+
+func BenchmarkNocFile(b *testing.B) {
+	b.ReportAllocs()
+
+	var f File
+	SetFile(&f, true, []byte("file content"))
+
+	var d []byte
+
+	for i := 0; i < b.N; i++ {
+		d = f.Data()
+	}
+
+	_ = d
+}
+
+func BenchmarkFS(b *testing.B) {
+	b.ReportAllocs()
+
+	var fs FS
+	AddFile(&fs, "name", 0, time.Now(), 0, false, nil, EncodeFile([]byte("file content")))
+
+	d := make([]byte, 100)
+
+	for i := 0; i < b.N; i++ {
+		f, err := fs.Open("name")
+		if err != nil {
+			panic(err)
+		}
+		_, err = f.Read(d)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	_ = d
+}
+
+func BenchmarkFSNoCache(b *testing.B) {
+	b.ReportAllocs()
+
+	var fs FS
+	fs.NoCache = true
+
+	AddFile(&fs, "name", 0, time.Now(), 0, false, nil, EncodeFile([]byte("file content")))
+
+	d := make([]byte, 100)
+
+	for i := 0; i < b.N; i++ {
+		f, err := fs.Open("name")
+		if err != nil {
+			panic(err)
+		}
+		_, err = f.Read(d)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	_ = d
+}
+
+func BenchmarkFSNoCompress(b *testing.B) {
+	b.ReportAllocs()
+
+	var fs FS
+	NotCompressed(&fs, true)
+
+	AddFile(&fs, "name", 0, time.Now(), 0, false, nil, EncodeFile([]byte("file content")))
+
+	d := make([]byte, 100)
+
+	for i := 0; i < b.N; i++ {
+		f, err := fs.Open("name")
+		if err != nil {
+			panic(err)
+		}
+		_, err = f.Read(d)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	_ = d
+}
+
+func BenchmarkFSDate(b *testing.B) {
+	b.ReportAllocs()
+
+	var fs FS
+	AddFile(&fs, "name", 0, time.Now(), 0, false, nil, EncodeFile([]byte("file content")))
+
+	var err error
+	var d []byte
+
+	for i := 0; i < b.N; i++ {
+		d, err = fs.Data("name")
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	_ = d
 }

@@ -63,6 +63,7 @@ var TimeFormat = "2006-01-02 15:04:05.999999999 -0700 MST"
 var (
 	ErrClosed     = errors.New("closed file")
 	ErrOutOfRange = errors.New("out of range")
+	ErrNoContent  = errors.New("no content")
 )
 
 // SetFile used by generator.
@@ -140,15 +141,37 @@ func (fs FS) Open(p string) (_ http.File, err error) {
 		return nil, os.ErrNotExist
 	}
 
-	dec, err := fs.decode(f)
-	if err != nil {
-		return
+	ff := &fsfile{file: f, fs: fs}
+
+	if !f.isDir {
+		var dec []byte
+		dec, err = fs.decode(f)
+		if err != nil {
+			return
+		}
+		ff.r.Reset(dec)
 	}
 
-	ff := &fsfile{file: f, fs: fs}
-	ff.r.Reset(dec)
-
 	return ff, nil
+}
+
+func (fs FS) Data(p string) ([]byte, error) {
+	if len(p) != 0 && p[0] == '/' {
+		p = p[1:]
+	}
+	if p == "" {
+		p = "."
+	}
+	f, ok := fs.m[p]
+	if !ok {
+		return nil, os.ErrNotExist
+	}
+
+	if f.isDir {
+		return nil, ErrNoContent
+	}
+
+	return fs.decode(f)
 }
 
 func (fs FS) decode(f *file) (d []byte, err error) {
