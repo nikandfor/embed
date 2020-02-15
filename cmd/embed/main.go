@@ -179,9 +179,9 @@ import (
 )
 
 func init() {
-{{- $name := .name }}
+{{- $var := .var }}
 {{- range .files }}
-	embed.AddFile(&{{ $name }},
+	embed.AddFile(&{{ $var }},
 		` + "`{{ .Path }}`," + `
 		{{ .Size }},
 		embed.MustTime(time.Parse(embed.TimeFormat, "{{ .ModTime }}")),
@@ -203,11 +203,10 @@ func init() {
 	tlog.Printf("type: %v", reflect.TypeOf(embed.File{}).PkgPath())
 
 	err = t.Execute(w, map[string]interface{}{
-		"import":       reflect.TypeOf(embed.File{}).PkgPath(),
-		"package":      c.String("package"),
-		"name":         c.String("name"),
-		"files":        files,
-		"forceStructs": c.Bool("force-structs"),
+		"import":  reflect.TypeOf(embed.File{}).PkgPath(),
+		"package": c.String("package"),
+		"var":     c.String("var"),
+		"files":   files,
 	})
 	if err != nil {
 		return errors.Wrap(err, "template")
@@ -246,14 +245,14 @@ package {{ .package }}
 import "{{ .import }}"
 
 func init() {
-	embed.SetFile(&{{ .name }}, ` + "`{{ .content }}`)" + `
+	embed.SetFile(&{{ .var }}, ` + "`{{ .content }}`)" + `
 }
 `))
 
 	err = t.Execute(w, map[string]interface{}{
 		"import":  reflect.TypeOf(embed.File{}).PkgPath(),
 		"package": c.String("package"),
-		"name":    c.String("name"),
+		"var":     c.String("var"),
 		"content": cont,
 	})
 	if err != nil {

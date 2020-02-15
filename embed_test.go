@@ -29,11 +29,14 @@ func TestFile(t *testing.T) {
 	SetFile(&f, EncodeFile(nil))
 	assert.Len(t, f.Data(), 0)
 
+	b := make([]byte, 100)
+	n, err := f.Reader().Read(b)
+	assert.Error(t, err)
+
 	SetFile(&f, EncodeFile([]byte("content")))
 	assert.Equal(t, []byte("content"), f.Data())
 
-	b := make([]byte, 100)
-	n, err := f.Reader().Read(b)
+	n, err = f.Reader().Read(b)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("content"), b[:n])
 }
@@ -61,6 +64,7 @@ func TestFSFile(t *testing.T) {
 	AddFile(&fs, "file_path", 7, tm, 0600, false, nil, EncodeFile([]byte("content")))
 	AddFile(&fs, "file", 6, tm2, 0641, false, nil, EncodeFile([]byte("valval")))
 
+	//
 	f, err := fs.Open("/file_path")
 	assert.NoError(t, err)
 
@@ -79,6 +83,8 @@ func TestFSFile(t *testing.T) {
 	assert.Equal(t, nil, s.Sys())
 
 	//
+	fs.NoCache = true
+
 	f, err = fs.Open("/file")
 	assert.NoError(t, err)
 
