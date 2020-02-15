@@ -204,8 +204,8 @@ func init() {
 		{{ else -}}
 		nil,
 		{{ end -}}
-		{{ if $noc }}{{ if .IsDir }}` + "``" + `{{ else }}{{ .Content }}{{ end }},{{ else -}}
-		` + "`{{ .Content }}`," + `{{ end }}
+		{{ if $noc }}{{ if .IsDir }}nil{{ else }}[]byte({{ .Content }}){{ end }},{{ else -}}
+		[]byte(` + "`{{ .Content }}`)," + `{{ end }}
 	)
 {{- end }}
 }
@@ -235,7 +235,11 @@ func embedFile(c *cli.Command) error {
 
 	var cont string
 	if c.Bool("noc") {
-		cont = strconv.Quote(string(data))
+		if len(data) == 0 {
+			cont = "nil"
+		} else {
+			cont = strconv.Quote(string(data))
+		}
 	} else {
 		if len(data) != 0 {
 			z := snappy.Encode(nil, data)
@@ -266,9 +270,9 @@ import "{{ .import }}"
 
 func init() {
 {{- if .noc }}
-	embed.SetFile(&{{ .var }}, true, {{ .content }})
+	embed.SetFile(&{{ .var }}, true, []byte({{ .content }}))
 {{- else }}
-	embed.SetFile(&{{ .var }}, false, ` + "`{{ .content }}`)" + `
+	embed.SetFile(&{{ .var }}, false, []byte(` + "`{{ .content }}`))" + `
 {{- end }}
 }
 `))

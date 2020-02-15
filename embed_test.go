@@ -12,15 +12,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func EncodeFile(d []byte) (cont string) {
+func EncodeFile(d []byte) (cont []byte) {
 	if len(d) == 0 {
 		return
 	}
 
 	z := snappy.Encode(nil, d)
-	cont = base64.StdEncoding.EncodeToString(z)
+	e := base64.StdEncoding.EncodeToString(z)
 
-	return
+	return []byte(e)
 }
 
 func TestFile(t *testing.T) {
@@ -40,7 +40,7 @@ func TestFile(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("content"), b[:n])
 
-	SetFile(&f, true, "content")
+	SetFile(&f, true, []byte("content"))
 	assert.Equal(t, []byte("content"), f.Data())
 
 	n, err = f.Reader().Read(b)
@@ -51,11 +51,11 @@ func TestFile(t *testing.T) {
 func TestBadFile(t *testing.T) {
 	var f File
 
-	SetFile(&f, false, EncodeFile([]byte("content"))+"123")
+	SetFile(&f, false, append(EncodeFile([]byte("content")), "123"...))
 
 	assert.Panics(t, func() { f.Data() })
 
-	SetFile(&f, false, base64.StdEncoding.EncodeToString([]byte("content")))
+	SetFile(&f, false, []byte(base64.StdEncoding.EncodeToString([]byte("content"))))
 
 	assert.Panics(t, func() { f.Data() })
 }
@@ -142,8 +142,8 @@ func TestFSFileNoc(t *testing.T) {
 
 	var _ http.FileSystem = fs
 
-	AddFile(&fs, "file_path", 7, tm, 0600, false, nil, "content")
-	AddFile(&fs, "file", 6, tm2, 0641, false, nil, "valval")
+	AddFile(&fs, "file_path", 7, tm, 0600, false, nil, []byte("content"))
+	AddFile(&fs, "file", 6, tm2, 0641, false, nil, []byte("valval"))
 
 	//
 	f, err := fs.Open("/file_path")
@@ -215,7 +215,7 @@ func TestFSDir(t *testing.T) {
 	var fs FS
 	fs.Index = true
 
-	AddFile(&fs, "dir", 4096, tm, 020000000775, true, []string{"a", "b"}, "")
+	AddFile(&fs, "dir", 4096, tm, 020000000775, true, []string{"a", "b"}, nil)
 	AddFile(&fs, "dir/a", 7, tm2, 0600, false, nil, EncodeFile([]byte("content")))
 	AddFile(&fs, "dir/b", 6, tm3, 0641, false, nil, EncodeFile([]byte("valval")))
 
@@ -262,8 +262,8 @@ func TestFSBadFile(t *testing.T) {
 
 	var fs FS
 
-	AddFile(&fs, "file1", 7, tm, 0600, false, nil, EncodeFile([]byte("content"))+"123")
-	AddFile(&fs, "file2", 7, tm, 0600, false, nil, base64.StdEncoding.EncodeToString([]byte("content")))
+	AddFile(&fs, "file1", 7, tm, 0600, false, nil, append(EncodeFile([]byte("content")), "123"...))
+	AddFile(&fs, "file2", 7, tm, 0600, false, nil, []byte(base64.StdEncoding.EncodeToString([]byte("content"))))
 
 	_, err := fs.Open("/file1")
 	assert.Error(t, err)

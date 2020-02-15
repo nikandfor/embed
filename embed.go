@@ -23,7 +23,7 @@ import (
 type (
 	// File embeds file content in executable.
 	File struct {
-		enc string
+		enc []byte
 		noc bool
 	}
 
@@ -35,7 +35,7 @@ type (
 		isDir   bool
 
 		files   []string
-		content string
+		content []byte
 
 		once    sync.Once
 		decoded []byte
@@ -66,13 +66,13 @@ var (
 )
 
 // SetFile used by generator.
-func SetFile(f *File, noc bool, enc string) {
+func SetFile(f *File, noc bool, enc []byte) {
 	f.enc = enc
 	f.noc = noc
 }
 
 // AddFile used by generator.
-func AddFile(fs *FS, path string, size int64, mod time.Time, mode os.FileMode, isDir bool, files []string, enc string) {
+func AddFile(fs *FS, path string, size int64, mod time.Time, mode os.FileMode, isDir bool, files []string, enc []byte) {
 	if fs.m == nil {
 		fs.m = make(map[string]*file)
 	}
@@ -91,18 +91,24 @@ func AddFile(fs *FS, path string, size int64, mod time.Time, mode os.FileMode, i
 func NotCompressed(fs *FS, b bool) { fs.nocompress = b }
 
 // Data decodes and returns file content or nil if empty.
+// If file is not encoded (flag was provided to generator), content is not copied.
+// It means less allocs but also it means you can't modify resulting slice content.
+// You may slice it like data[10:100].
 func (f File) Data() []byte {
 	if f.noc {
-		return []byte(f.enc)
+		return f.enc
 	}
-	if f.enc == "" {
+	if f.enc == nil {
 		return nil
 	}
 
-	z, err := base64.StdEncoding.DecodeString(f.enc)
+	z := make([]byte, base64.StdEncoding.DecodedLen(len(f.enc)))
+	n, err := base64.StdEncoding.Decode(z, f.enc)
 	if err != nil {
 		panic(err)
 	}
+
+	z = z[:n]
 
 	r, err := snappy.Decode(nil, z)
 	if err != nil {
@@ -119,6 +125,9 @@ func (f File) Reader() io.Reader {
 }
 
 // Open opens file from embedded fs.
+// If file is not encoded (flag was provided to generator), content is not copied.
+// It means less allocs but also it means you can't modify resulting slice content.
+// You may slice it like data[10:100].
 func (fs FS) Open(p string) (_ http.File, err error) {
 	if len(p) != 0 && p[0] == '/' {
 		p = p[1:]
@@ -159,17 +168,19 @@ func (fs FS) decode(f *file) (d []byte, err error) {
 
 func (fs FS) decodeFile(f *file) (d []byte, err error) {
 	if fs.nocompress {
-		return []byte(f.content), nil
+		return f.content, nil
 	}
-	if f.content == "" {
+	if f.content == nil {
 		return
 	}
 
-	var z []byte
-	z, err = base64.StdEncoding.DecodeString(f.content)
+	z := make([]byte, base64.StdEncoding.DecodedLen(len(f.content)))
+	n, err := base64.StdEncoding.Decode(z, f.content)
 	if err != nil {
 		return
 	}
+
+	z = z[:n]
 
 	d, err = snappy.Decode(nil, z)
 	if err != nil {
