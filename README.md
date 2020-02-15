@@ -20,8 +20,9 @@ Create file with a variables of type `embed.File`.
 package mypkg
 
 var (
-    someTemplate embed.File
-    Config embed.File
+    someTemplate  embed.File
+    Config        embed.File
+    NotCompressed embed.File
 )
 ```
 
@@ -29,6 +30,7 @@ Generate files content.
 ```bash
 embed --pkg mypkg --src my.tmpl --dst mypkg/tmpl.go --var someTemplate
 embed --pkg mypkg --src cfg.json --dst mypkg/config.go --var Config
+embed --pkg mypkg --src map.bin --dst mypkg/map.go --var NotCompressed --no-compress
 ```
 
 Use.
@@ -37,6 +39,8 @@ data := someTemplate.Data()
 t, err := template.New("").Parse(string(data))
 
 dec, err := json.NewDecoder(Config.Reader()) // file is decoded and bytes.NewReader(data) is returned.
+
+data, err := NotCompressed.Data() // no allocs here. data can't be modified.
 ```
 
 ## Folder
@@ -46,7 +50,10 @@ Create file with a variable of type `embed.FS`.
 // static/var.go
 package static
 
-var FS = embed.FS{Index: true} // allow reading directories
+var FS = embed.FS{
+    Index: true, // allow reading directories
+    NoCache: true, // no cache decoded files. trade memory for cpu usage
+}
 ```
 
 Generate content.
@@ -57,6 +64,13 @@ embed --pkg static --src front/dist --dst static/embedded.go --var FS --skip-hid
 Use.
 ```go
 http.Handle("/", static.FS)
+
+f, err := static.FS.Open("file.txt")
+// if err != nil
+p := make([]byte, 100)
+n, err := f.(io.ReaderAt).ReadAt(p, pos)
+
+data, err := static.FS.Data("file.txt") // no allocs (with NoCache == false or --no-compress)
 ```
 
 ## .gitignore
