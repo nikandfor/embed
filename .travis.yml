@@ -13,6 +13,7 @@ script:
   - go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
   - go generate
   - go test ./... -v
+  - if [ "$TRAVIS_OS_NAME" = linux ]; then ./is_gofmt.sh; fi
 
 after_success:
   - test "$TRAVIS_OS_NAME" = linux && test "$TRAVIS_CPU_ARCH" = amd64 && test "$TRAVIS_GO_VERSION" = "1.13" && export CODECOV_UPLOAD=yes

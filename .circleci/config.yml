@@ -9,7 +9,9 @@ jobs:
 
       - checkout
 
-      - run: go test -race -v ./...
+      - run: go generate
+      - run: go test -v -race ./...
+      - run: ./is_gofmt.sh
 
   go1.12:
     <<: *base
