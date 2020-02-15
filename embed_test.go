@@ -3,6 +3,7 @@ package embed
 import (
 	"encoding/base64"
 	"io"
+	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -54,6 +55,8 @@ func TestFSFile(t *testing.T) {
 	tm2 := time.Now()
 
 	var fs FS
+
+	var _ http.FileSystem = fs
 
 	AddFile(&fs, "file_path", 7, tm, 0600, false, nil, EncodeFile([]byte("content")))
 	AddFile(&fs, "file", 6, tm2, 0641, false, nil, EncodeFile([]byte("valval")))

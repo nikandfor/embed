@@ -39,9 +39,8 @@ func main() {
 			cli.NewFlag("src,s", "static", "folder of file to embed"),
 			cli.NewFlag("dst,d", "static/embedded.go", "output file"),
 			cli.NewFlag("package,pkg,p", "static", "package name"),
-			cli.NewFlag("name,n", "", "prefix all functions with given name"),
+			cli.NewFlag("var,v", "", "variable name to assign value to"),
 			cli.NewFlag("skip-hidden,H", false, "skip hidden files in src"),
-			cli.NewFlag("force-structs", false, "add struct definitions even with given name"),
 			cli.HelpFlag,
 		},
 	}
